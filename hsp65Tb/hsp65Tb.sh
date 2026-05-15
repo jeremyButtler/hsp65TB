@@ -290,6 +290,10 @@ printf "name\tmean_depth\tgene:species:depth\t...\n";
 
 while read -r lineStr;
 do # Loop: read in databases
+   if [ "$lineStr" = "" ]; then
+      continue; # blank line
+   fi;
+
    nameStr="$(\
       printf "%s" "$lineStr" | awk '{print $1;};' \
    )";
@@ -300,7 +304,7 @@ do # Loop: read in databases
    if [ ! -d "$dirStr" ];
    then
      printf "could not find directory %s\n" "$dirStr" >&2;
-      printf "ERROR-%s\tNA\tNA\n" "$nameStr";
+     printf "ERROR-%s\tNA\tNA\n" "$nameStr";
      continue;
    fi;
 
@@ -366,8 +370,8 @@ do # Loop: read in databases
 done < "$fileStr"; # Loop: read in databases
 # for report have: name-barcode\thsp65\tdepth
 
-printf "minimap2 version:%s\n" "$mapVersionStr" >&2;
-printf "bioTools version:%s\n" \
+printf "minimap2 version: %s\n" "$mapVersionStr" >&2;
+printf "bioTools version: %s\n" \
     "$(getLin -v | sed 's/.*: //;')" \
   >&2;
 
