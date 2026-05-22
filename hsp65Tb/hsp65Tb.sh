@@ -151,7 +151,7 @@ then # If: user wanted to install
       fi;
    fi;
 
-   if ! minimap2 --version 2>/dev/null;
+   if ! minimap2 --version 1>/dev/null 2>/dev/null;
    then # If: need to install something
       cd "$mapReadStr" || exit;
       make -f mkfile.unix;
@@ -238,7 +238,7 @@ if [ ! -f "$fileStr" ]; then
 fi;
 
 mapReadStr="$mapReadStr/mapRead";
-if minimap2 --version; then
+if minimap2 --version 2>/dev/null 1>/dev/null; then
    mapCmdStr="minimap2 -a $refStr";
    mapVersionStr="$(minimap2 --version)";
 elif [ -f "$mapReadStr" ]; then
@@ -323,11 +323,16 @@ do # Loop: read in databases
    fi;
 
    meanDepthF="$(
-      ampDepth -sam "del.sam" -min-depth 1 |
+      "$ampDepthStr" -sam "del.sam" -min-depth 1 |
          awk '
                BEGIN{getline;};
                {cntSI += $4; ++numSI;};
-               END{print cntSI / numSI;};
+               END{
+                  if(cntSI > 0)
+                     print cntSI / numSI;
+                  else
+                     print 0;
+               }; # END
              '
    )"; # get mean depth
 
