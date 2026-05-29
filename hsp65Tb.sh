@@ -35,6 +35,7 @@ versionStr="2026-05-29";
 
 helpStr="$(basename "$0") samples.tsv > output.tsv
          or $(basename "$0") install
+         or $(basename "$0") mkfile prefix /path/to/fastq_pass > samples.tsv
          or $(basename "$0") help
    - detects hsp65 species in barcodes
 Version:
@@ -470,7 +471,9 @@ do # Loop: read in databases
               getline;
               if(NF < 4)
               { # If: nothing in the report
-                 printf "%s\t%0.2f", nameStr, meanDepthF;
+                 printf "%s\treads\t%0.2f",
+                        nameStr,
+                        meanDepthF;
                  printf "\t%0.2f", percCoverF;
                  printf "\tNA\tNA\tNA\tNA\tNA\tNA\n";
                  exit;
