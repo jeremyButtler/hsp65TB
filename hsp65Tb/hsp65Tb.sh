@@ -46,6 +46,11 @@ Input:
        - run1_barcode01 /path/to/run1/fastq_pass/barcode01
        - the path must be from your current location to
          your barcode directories
+       - you can quickly make the file with this command
+         line command
+         * find /path/to/barcodes -name barcode* |
+             sed 's/.*barcode\([0-9]*\)/bar\1\t&/;'
+           
    - install:
      o install programs to run this script and exit
    - help:
@@ -132,6 +137,9 @@ then # If: user wanted to install
       git clone \
          "https://github.com/jeremyButtler/bioTools" \
          "$bioToolsStr";
+   else
+      cd "$bioToolsStr" || exit;
+      git pull;
    fi;
 
    cd "$getLinStr" || exit;
@@ -285,14 +293,31 @@ fi;
 #   - print the header and for loop check input
 #*********************************************************
 
-# print the header
-printf "name\tmean_depth\tgene:species:depth\t...\n";
+{ # print the header
+   printf "sample\tmean_depth\tperc_cover";
+   printf "\tgene\tname";
+   printf "\tsupport\tclassifiable";
+   printf "\tpercent_support\ttotal_reads\n";
+}; # print the header
+
+if [ ! -f "hsp65-coord.tsv" ];
+then
+   sed -n '1p; /hsp65/p;' "$ftbFilesStr/coords.tsv" \
+     > "hsp65-coord.tsv";
+fi;
 
 while read -r lineStr;
 do # Loop: read in databases
    if [ "$lineStr" = "" ]; then
       continue; # blank line
    fi;
+
+   tmpStr="$(printf "%s" "$lineStr" | sed 's/^#.*//;')";
+   if [ "$tmpStr" = "" ]; then
+      continue; # commented out
+   fi;
+
+   printf "on %s%s\n" "$lineStr" > /dev/stderr;
 
    nameStr="$(\
       printf "%s" "$lineStr" | awk '{print $1;};' \
@@ -323,18 +348,16 @@ do # Loop: read in databases
    fi;
 
    meanDepthF="$(
-      "$ampDepthStr" -sam "del.sam" -min-depth 1 |
-         awk '
-               BEGIN{getline;};
-               {cntSI += $4; ++numSI;};
-               END{
-                  if(cntSI > 0)
-                     print cntSI / numSI;
-                  else
-                     print 0;
-               }; # END
-             '
+      "$ampDepthStr" \
+           -gene-tbl "hsp65-coord.tsv" \
+           -p-gene-cover \
+           -min-depth 1 \
+           -sam "del.sam" |
+         awk 'BEGIN{getline;}; {print $2 " " $4;};'
    )"; # get mean depth
+
+   percCoverF="${meanDepthF%% *}";
+   meanDepthF="${meanDepthF##* }";
 
    #******************************************************
    # Sec04 Sub03:
@@ -344,30 +367,57 @@ do # Loop: read in databases
    "$getLinStr" \
         -simple "$simpDbStr" \
         -complex "$compDbStr" \
+        -bin-prefix "$nameStr-bin" \
+        -bin-call \
+        -bin-unkown \
+        -bin-fragment \
+        -bin-fq \
         -sam "del.sam" |
      awk \
          -v nameStr="$nameStr" \
          -v meanDepthF="$meanDepthF" \
+         -v percCoverF="$percCoverF" \
          '
            BEGIN{
-              getline;
-              printf "%s\t%0.2f", nameStr, meanDepthF;
 
+              getline;
               if(NF < 4)
               { # If: nothing in the report
-                 printf "\tNA\n";
+                 printf "%s\t%0.2f", nameStr, meanDepthF;
+                 printf "\t%0.2f", percCoverF;
+                 printf "\tNA\tNA\tNA\tNA\tNA\tNA\n";
                  exit;
               } # If: nothing in the report
 
               for(siCol = 3; siCol < NF; ++siCol)
+              { # Loop: get the gene and name
+                 geneAryStr[siCol - 2] = $siCol;
+                 sub(/:.*/, "", geneAryStr[siCol - 2]);
+
                  nameAryStr[siCol - 2] = $siCol;
+                 sub(/.*:/, "", nameAryStr[siCol - 2]);
+              } # Loop: get the gene and name
+
               getline;
 
               for(siCol = 3; siCol < NF; ++siCol)
-                 printf "\t%s:%s",
+              { # Loop: get the deths
+                 gsub(/[a-zA-Z]*=/, "", $siCol);
+                 split($siCol, depthArySI, ":");
+
+                 printf "%s\t%0.2f\t%0.2f",
+                        nameStr,
+                        meanDepthF,
+                        percCoverF;
+                 printf "\t%s\t%s\t%s\t%s\t%s\t%s\n",
+                        geneAryStr[siCol - 2],
                         nameAryStr[siCol - 2],
-                        $siCol;
-              printf "\n";
+                        depthArySI[1], # number supporting
+                        depthArySI[3], # usabel reads
+                        depthArySI[2], # percent support
+                        depthArySI[4]; # total depth
+              } # Loop: get the deths
+
               exit;
            } # BEGIN
         ';
