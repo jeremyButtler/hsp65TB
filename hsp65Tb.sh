@@ -274,7 +274,7 @@ then # If: user wanted to install
       make arm_neon=1 aarch64=1 || exit;
    elif [ "$archStr" = "arm32" ]; then
       make arm_neon=1 || exit;
-   elif [ "$archStr" = "x68" ]; then
+   elif [ "$archStr" = "x86" ]; then
       make || exit; # x86 cpu
    else
      printf "could not install minimap2; using mapRead\n";
