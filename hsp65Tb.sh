@@ -176,7 +176,7 @@ then # If: user wanted to install
    cd "$bioToolsStr/tbConSrc" || exit;
    make -f mkfile.unix;
 
-   cd "$bioToolsStr/filtSamSrc" || exit;
+   cd "$bioToolsStr/filtsamSrc" || exit;
    make -f mkfile.unix;
 
    #******************************************************
@@ -236,8 +236,8 @@ then # If: user wanted to install
    #_________________databases____________________________
    cpStr="$bioToolsStr/getLinSrc/hsp65-databases/";
    cpStr="$cpStr/2026-05-26/";
-   cp "$cpStr/09-hsp65-simple.tsv" "$compDbStr";
-   cp "$cpStr/10-hsp65-complex.tsv"  "$simpDbStr";
+   cp "$cpStr/09-hsp65-simple.tsv" "$simpDbStr";
+   cp "$cpStr/10-hsp65-complex.tsv"  "$compDbStr";
 
    #******************************************************
    # Sec03 Sub04:
@@ -247,8 +247,8 @@ then # If: user wanted to install
    if [ ! -d "${HOME}/Downloads/minimap2" ];
    then
       git clone \
-         "https://github.com/lh3/minimap2"
-         "minimap2";
+         "https://github.com/lh3/minimap2" \
+         "${HOME}/Downloads/minimap2";
       cd "${HOME}/Downloads/minimap2" || exit;
    else
       cd "${HOME}/Downloads/minimap2" || exit;
@@ -290,8 +290,8 @@ then # If: user wanted to install
 fi; # If: user wanted to install
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-^ Sec04:
-^   - build the output tsv file
+# Sec04:
+#   - build the output tsv file
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 if [ "$1" = "mkfile" ];
@@ -387,7 +387,7 @@ fi;
 #*********************************************************
 
 { # print the header
-   printf "sample\tmean_depth\tperc_cover";
+   printf "sample\tmean_depth\tperc_cover\tsource";
    printf "\tgene\tname";
    printf "\tsupport\tclassifiable";
    printf "\tpercent_support\ttotal_reads\n";
@@ -466,7 +466,7 @@ do # Loop: read in databases
          -v percCoverF="$percCoverF" \
          '
            BEGIN{
-
+              OFS="\t";
               getline;
               if(NF < 4)
               { # If: nothing in the report
@@ -492,7 +492,7 @@ do # Loop: read in databases
                  gsub(/[a-zA-Z]*=/, "", $siCol);
                  split($siCol, depthArySI, ":");
 
-                 printf "%s\t%0.2f\t%0.2f",
+                 printf "%s\treads\t%0.2f\t%0.2f",
                         nameStr,
                         meanDepthF,
                         percCoverF;
@@ -517,7 +517,8 @@ do # Loop: read in databases
 
    if [ -f "$nameStr-bin-fragments.fq" ];
    then
-      $mapCmdStr "$nameStr-bin-fragments.fq" |
+      $mapCmdStr "$nameStr-bin-fragments.fq" \
+          2>/dev/null |
         "$hsp65TBStr/tbCon" -sam - \
         > "$nameStr-bin-fragments-con.sam";
 
@@ -525,12 +526,43 @@ do # Loop: read in databases
            -simple "$simpDbStr" \
            -complex "$compDbStr" \
            -pmode-genome \
-           -sam "$nameStr-bin-fragments-con.sam";
+           -sam "$nameStr-bin-fragments-con.sam" |
+        awk \
+            -v nameStr="$nameStr" \
+            '
+              BEGIN{OFS="\t"; getline;};
+              { # MAIN
+                 if($3 == "*")
+                    next;
+
+                 geneStr = $3;
+                 sub(/:.*/, "", geneStr);
+
+                 speciesStr = $3;
+                 sub(/.*:/, "", speciesStr);
+
+                 printf "%s\tfragments\tNA\tNA", nameStr;
+                 printf "\t%s\t%s\tNA\tNA\tNA\tNA\n",
+                        geneStr,
+                        speciesStr;
+                 exit;
+              }; # MAIN
+            '
       "$hsp65TBStr/filtsam" \
           -out-fasta \
-          -sam "$nameStr-bin-fragments-con.sam" \
-          -out "$nameStr-bin-fragments-con.fa";
+          -sam "$nameStr-bin-fragments-con.sam" |
+        sed "s/^>[^ ]*/>$nameStr-fragments/;" \
+        > "$nameStr-bin-fragments-con.fa";
+
       rm "$nameStr-bin-fragments-con.sam";
+      linesSI="$(\
+         wc -l "$nameStr-bin-fragments-con.fa" |
+           awk '{print $1};' \
+      )";
+      if [ "$linesSI" -lt 2 ];
+      then
+        rm "$nameStr-bin-fragments-con.fa";
+      fi;
    fi;
 
    #******************************************************
@@ -540,10 +572,21 @@ do # Loop: read in databases
 
    if [ -f "$nameStr-bin-fragments.fq" ];
    then
-      $mapCmdStr "$nameStr-bin-hsp65-unkown.fq" |
+      $mapCmdStr "$nameStr-bin-hsp65-unkown.fq" \
+        2>/dev/null |
         "$hsp65TBStr/tbCon" -sam - |
-        "$hsp65TBStr/filtsam" -out-fasta \
+        "$hsp65TBStr/filtsam" -out-fasta |
+        sed "s/^>[^ ]*/>$nameStr-unkown/;" \
         > "$nameStr-bin-hsp65-unkow-con.fa";
+      linesSI="$( \
+        wc -l "$nameStr-bin-hsp65-unkow-con.fa" |
+           awk '{print $1};' \
+      )";
+
+      if [ "$linesSI" -lt 2 ];
+      then
+        rm "$nameStr-bin-hsp65-unkow-con.fa";
+      fi;
    fi;
   
 done < "$fileStr"; # Loop: read in databases
