@@ -12,9 +12,10 @@ Creative commons 0
 
 # Install:
 
-Downloads bioTools in Downloads as `bioTools-buttler` and
-  compiles the needed programs. The needed programs are
-  moved to the hsp65TB folder in Downloads.
+The hsp65Tb.sh script has an install command to install
+  the needed programs for you. The programs and missing
+  databases will be installed in your Downloads folder in
+  the `hsp65TB` directory.
 
 ```
 if [ ! "${HOME}/Downloads/hsp65TB" ];
