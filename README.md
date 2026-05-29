@@ -2,7 +2,7 @@
 
 A script used to detect hsp65 speices in tuberculosis
   samples. The sensitivity is not the best, but it does
-  detect some lineages.
+  detect some species.
 
 # License:
 
