@@ -7,9 +7,11 @@
 #     - variable declarations
 #   o sec02:
 #     - install command
-#   o sec03:
-#     - find program and file locations
 #   o sec04:
+#     - build the output tsv file
+#   o sec05:
+#     - find program and file locations
+#   o sec06:
 #     - get hsp65 lineages
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -19,18 +21,17 @@
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 fileStr="$1";
-refStr="NC000962.fa";
-simpDbStr="hsp65-db-simple.tsv";
-compDbStr="hsp65-db-complex.tsv";
 
-bioToolsStr="${HOME}/Downloads/bioTools-buttler/";
-getLinStr="$bioToolsStr/getLinSrc";
-ampDepthStr="$bioToolsStr/ampDepthSrc";
-mapReadStr="$bioToolsStr/mapReadSrc";
+hsp65TBStr="${HOME}/Downloads/hsp65TB/";
+
+refStr="$hsp65TBStr/NC000962.fa";
+hsp65CoordsStr="$hsp65TBStr/hsp65-coord.tsv";
+simpDbStr="$hsp65TBStr/hsp65-db-simple.tsv";
+compDbStr="$hsp65TBStr/hsp65-db-complex.tsv";
+
 
 mapCmdStr=""
-
-versionStr="2026-06-15";
+versionStr="2026-05-29";
 
 helpStr="$(basename "$0") samples.tsv > output.tsv
          or $(basename "$0") install
@@ -48,9 +49,16 @@ Input:
          your barcode directories
        - you can quickly make the file with this command
          line command
-         * find /path/to/barcodes -name barcode* |
-             sed 's/.*barcode\([0-9]*\)/bar\1\t&/;'
-           
+   - mkfile prefix /path/to/fastq_pass
+   - or mkfile /path/to/fastq_pass
+     o makes the file with barcode paths to run through
+       this program and prints to terminal
+     o prefix is the prefix for the output barcode names
+     o /path/to/fastq_fass is the path to the directory
+       with the barcodes
+     o commad used:
+       * find /path/to/barcodes -name barcode* |
+           sed 's/.*barcode\([0-9]*\)/bar\1\t&/;'
    - install:
      o install programs to run this script and exit
    - help:
@@ -67,8 +75,6 @@ Output:
 #     - help message print
 #   o sec02 sub02:
 #     - version number print
-#   o sec02 sub03:
-#     - install command print
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 #*********************************************************
@@ -125,14 +131,30 @@ elif [ "$1" = "--version" ]; then
    exit;
 fi;
 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Sec03:
+#   - install programs subcommand
+#   o sec03 sub01:
+#     - install bioTools programs
+#   o sec03 sub02:
+#     - download the hsp65TB script
+#   o sec03 sub03:
+#     - copy needed programs and databases to the hsp65
+#       script
+#   o sec03 sub04:
+#     - minimap2 install
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 #*********************************************************
-# Sec02 Sub03:
-#   - install command print
+# Sec03 Sub01:
+#   - install bioTools programs
 #*********************************************************
 
 if [ "$1" = "install" ];
 then # If: user wanted to install
-   if [ ! -d "${HOME}/Downloads/bioTools-buttler" ];
+   bioToolsStr="${HOME}/Downloads/bioTools-buttler/";
+
+   if [ ! -d "$bioToolsStr" ];
    then
       git clone \
          "https://github.com/jeremyButtler/bioTools" \
@@ -142,154 +164,225 @@ then # If: user wanted to install
       git pull;
    fi;
 
-   cd "$getLinStr" || exit;
+   cd "$bioToolsStr/getLinSrc" || exit;
    make -f mkfile.unix;
 
-   cd "$ampDepthStr" || exit;
+   cd "$bioToolsStr/ampDepthSrc" || exit;
    make -f mkfile.unix;
 
-   if [ ! -d "${HOME}/Documents/freezeTBFiles" ]; then
-      if [ ! -d "/usr/local/share/freezeTBFiles" ]; then
-         if [ ! -d "${HOME}/Downloads/freezeTB" ];
-         then
-            git clone \
-              "https://github.com/jeremyButtler/freezeTB"\
-              "${HOME}/Downloads/freezeTB";
-         fi;
-      fi;
+   cd "$bioToolsStr/mapReadSrc" || exit;
+   make -f mkfile.unix;
+
+   cd "$bioToolsStr/tbConSrc" || exit;
+   make -f mkfile.unix;
+
+   cd "$bioToolsStr/filtSamSrc" || exit;
+   make -f mkfile.unix;
+
+   #******************************************************
+   # Sec03 Sub02:
+   #   - download the hsp65TB script
+   #******************************************************
+
+   if [ ! -d "$hsp65TBStr" ];
+   then
+      git clone \
+         "https://github.com/jeremyButtler/hsp65TB" \
+         "$hsp65TBStr";
+   else
+      cd "$hsp65TBStr" || exit;
+      git pull;
    fi;
 
-   if ! minimap2 --version 1>/dev/null 2>/dev/null;
-   then # If: need to install something
-      cd "$mapReadStr" || exit;
-      make -f mkfile.unix;
-   fi; # If: need to install something
+   gunzip -c < "$hsp65TBStr/NC000962.fa.gz" > "$refStr";
+
+   #******************************************************
+   # Sec03 Sub03:
+   #   - copy needed programs and databases to the hsp65
+   #     script
+   #******************************************************
+
+   #__________________getLin______________________________
+   cp \
+       "$bioToolsStr/getLinSrc/getLin" \
+       "$hsp65TBStr/getLin";
+   chmod a+x "$hsp65TBStr/getLin";
+
+   #__________________ampDepth____________________________
+   cp \
+       "$bioToolsStr/ampDepthSrc/ampDepth" \
+       "$hsp65TBStr/ampDepth";
+   chmod a+x "$hsp65TBStr/ampDepth";
+
+   #__________________mapRead_____________________________
+   # fall back read mapper
+   cp \
+       "$bioToolsStr/mapReadSrc/mapRead" \
+       "$hsp65TBStr/mapRead";
+   chmod a+x "$hsp65TBStr/mapRead";
+
+   #__________________tbCon_______________________________
+   cp \
+       "$bioToolsStr/tbConSrc/tbCon" \
+       "$hsp65TBStr/tbCon";
+   chmod a+x "$hsp65TBStr/tbCon";
+
+   #__________________filtsam_____________________________
+   cp \
+       "$bioToolsStr/filtsamSrc/filtsam" \
+       "$hsp65TBStr/filtsam";
+   chmod a+x "$hsp65TBStr/filtsam";
+
+   #_________________databases____________________________
+   cpStr="$bioToolsStr/getLinSrc/hsp65-databases/";
+   cpStr="$cpStr/2026-05-26/";
+   cp "$cpStr/09-hsp65-simple.tsv" "$compDbStr";
+   cp "$cpStr/10-hsp65-complex.tsv"  "$simpDbStr";
+
+   #******************************************************
+   # Sec03 Sub04:
+   #   - minimap2 install
+   #******************************************************
+
+   if [ ! -d "${HOME}/Downloads/minimap2" ];
+   then
+      git clone \
+         "https://github.com/lh3/minimap2"
+         "minimap2";
+      cd "${HOME}/Downloads/minimap2" || exit;
+   else
+      cd "${HOME}/Downloads/minimap2" || exit;
+      git pull;
+   fi;
+
+   archStr="$( \
+      uname -m |
+      sed '
+            s/arm64/-arm-64/;  # 64 bit arm cpu (MAC)
+            s/aarch64/-arm-64/;# 64 bit arm cpu (PI)
+            s/arm[Vv]*8.*/-arm-64/; # arm8 is 64 bit
+            s/arm[Vv]*[0-7].*/arm32/; # 32bit arm
+            s/^arm.*/arm32/;  # assume 32bit arm
+            s/x86*/x86/;      # often 64 bit intel/amd
+            s/i386*/x86/;     # older intel/amd
+            s/i686*/x86/;     # enhanced intel/AMD
+            s/-arm-64/arm64/; # here to avoid overwrite
+          '
+   )";
+
+   if [ "$archStr" = "arm64" ]; then
+      make arm_neon=1 aarch64=1 || exit;
+   elif [ "$archStr" = "arm32" ]; then
+      make arm_neon=1 || exit;
+   elif [ "$archStr" = "x68" ]; then
+      make || exit; # x86 cpu
+   else
+     printf "could not install minimap2; using mapRead\n";
+     exit;
+   fi;  # compile for various cpus
+
+   cp \
+       "minimap2" \
+       "$hsp65TBStr/minimap2";
+   chmod a+x "$hsp65TBStr/minimap2";
 
    exit;
 fi; # If: user wanted to install
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Sec03:
-#   - find program and file locations
-#   o sec03 sub01:
-#     - find program locations & check if input file exits
-#   o sec03 sub02:
-#     - find the needed databases
-#   o sec03 sub03:
-#     - find program locations
+^ Sec04:
+^   - build the output tsv file
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-#*********************************************************
-# Sec03 Sub01:
-#   - find freezeTBFiles directory location
-#*********************************************************
-
-if [ ! -d "${HOME}/Documents/freezeTBFiles" ]; then
-   if [ ! -d "/usr/local/share/freezeTBFiles" ]; then
-      if [ ! -d "${HOME}/Downloads/freezeTB" ]; then
-         printf "unable to find freezeTB databases\n" >&2;
-         exit;
+if [ "$1" = "mkfile" ];
+then
+   if [ "$3" = "" ];
+   then # If second entry is the file pathIf
+      if [ ! -d "$2" ]; then
+         printf "%s does not exist\n" "$2" >&2;
       else
-         ftbFilesStr="${HOME}/Downloads/freezeTB";
-         ftbFilesStr="$ftbFilesStr/freezeTBFiles";
+         find "$2" -name "barcode*" |
+           sed "s/.*barcode\([0-9]*\)/bar\1\t&/;";
       fi;
+   elif [ ! -d "$3" ]; then
+      printf "%s does not exist\n" "$3" >&2;
    else
-      ftbFilesStr="/usr/local/share/freezeTBFiles";
+      find "$3" -name "barcode*" |
+        sed "s/.*barcode\([0-9]*\)/$2-bar\1\t&/;";
    fi;
-else
-   ftbFilesStr="${HOME}/Documents/freezeTBFiles";
+
+   exit;
 fi;
 
-#*********************************************************
-# Sec03 Sub02:
-#   - find the needed databases
-#*********************************************************
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Sec05:
+#   - find program and file locations
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 if [ ! -f "$refStr" ]; then
-   if [ ! -f "$ftbFilesStr/$refStr" ];
-   then
-      printf "could not find reference\n" >&2;
-      exit;
+   printf "no reference; do sh hsp65Tb.sh install\n" >&2;
+   exit;
+elif [ ! -f "$hsp65CoordsStr" ]; then
+   printf "no hsp65 coordinates; do hsp65Tb.sh install\n"\
+     >&2;
+   exit;
+elif [ ! -f "$simpDbStr" ]; then
+   printf "no simple databse; do sh hsp65Tb.sh install\n"\
+      >&2;
+   exit;
+elif [ ! -f "$compDbStr" ]; then
+  printf "no complex databse; do sh hsp65Tb.sh install\n"\
+     >&2;
+  exit;
+fi; # check for databases
+
+#________________bioTools_programs________________________
+if [ ! -f "$hsp65TBStr/ampDepth" ]; then
+  printf "no ampDepth; do sh hsp65Tb.sh install\n" >&2;
+  exit;
+elif [ ! -f "$hsp65TBStr/getLin" ]; then
+  printf "no getLin; do sh hsp65Tb.sh install\n" >&2;
+  exit;
+elif [ ! -f "$hsp65TBStr/tbCon" ]; then
+  printf "no tbCon; do sh hsp65Tb.sh install\n" >&2;
+  exit;
+fi; # get for biotools programs
+
+#________________read_mapper_check________________________
+if [ ! -f "$hsp65TBStr/minimap2" ]; then
+   if [ ! -f "$hsp65TBStr/mapRead" ]; then
+     printf "no read mapper; do sh hsp65Tb.sh install \n"\
+       >&2;
+     exit;
    else
-      refStr="$ftbFilesStr/$refStr";
+      mapCmdStr="hsp65TBStr/mapRead -ref $refStr";
    fi;
-fi; # find the reference genome
+else
+   mapCmdStr="$hsp65TBStr/minimap2 -a $refStr";
+   mapVersionStr="$(minimap2 --version)";
+fi;
 
-if [ ! -f "$simpDbStr" ]; then
-   if [ ! -f "$ftbFilesStr/$simpDbStr" ];
-   then
-      printf "could not find hsp65 simple database\n" >&2;
-      exit;
-   else
-      simpDbStr="$ftbFilesStr/$simpDbStr";
-   fi;
-fi; # find the simple database
-
-if [ ! -f "$compDbStr" ]; then
-   if [ ! -f "$ftbFilesStr/$compDbStr" ];
-   then
-      printf "could not find hsp65 complex database\n" >&2;
-      exit;
-   else
-      compDbStr="$ftbFilesStr/$compDbStr";
-   fi;
-fi; # find the comple database
-
-#*********************************************************
-# Sec03 Sub03:
-#   - find program locations and check if input file exits
-#*********************************************************
-
+#__________________check_if_input_exists__________________
 if [ ! -f "$fileStr" ]; then
    printf "could not open input (%s)\n" "$fileStr" >&2;
    exit;
 fi;
 
-mapReadStr="$mapReadStr/mapRead";
-if minimap2 --version 2>/dev/null 1>/dev/null; then
-   mapCmdStr="minimap2 -a $refStr";
-   mapVersionStr="$(minimap2 --version)";
-elif [ -f "$mapReadStr" ]; then
-   mapCmdStr="$mapReadStr -ref $refStr";
-else
-   printf "no read mapper; install minimap2 or do %s\n" \
-          "$(basename "$0") install" \
-     >&2;
-   exit;
-fi;
-
-getLinStr="$getLinStr/getLin";
-if [ ! -f "$getLinStr" ];
-then
-   printf "no getLin (do %s install)\n" \
-          "$(basename "$0")" \
-     >&2;
-   exit;
-fi;
-
-ampDepthStr="$ampDepthStr/ampDepth";
-if [ ! -f "$ampDepthStr" ];
-then
-   printf "no ampDepth (do %s install)\n" \
-          "$(basename "$0")" \
-     >&2;
-   exit;
-fi;
-
-
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Sec04:
+# Sec06:
 #   - get hsp65 lineages
-#   o sec04 sub01:
+#   o sec06 sub01:
 #     - print the header and for loop check input
-#   o sec04 sub02:
+#   o sec06 sub02:
 #     - map reads and get mean depth
-#   o sec04 sub03:
+#   o sec06 sub03:
 #     - get species in hsp65
+#   o sec06 sub04:
+#     - get fragment species
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 #*********************************************************
-# Sec04 Sub01:
+# Sec06 Sub01:
 #   - print the header and for loop check input
 #*********************************************************
 
@@ -299,12 +392,6 @@ fi;
    printf "\tsupport\tclassifiable";
    printf "\tpercent_support\ttotal_reads\n";
 }; # print the header
-
-if [ ! -f "hsp65-coord.tsv" ];
-then
-   sed -n '1p; /hsp65/p;' "$ftbFilesStr/coords.tsv" \
-     > "hsp65-coord.tsv";
-fi;
 
 while read -r lineStr;
 do # Loop: read in databases
@@ -317,7 +404,7 @@ do # Loop: read in databases
       continue; # commented out
    fi;
 
-   printf "on %s%s\n" "$lineStr" > /dev/stderr;
+   printf "on %s\n" "$lineStr" >&2;
 
    nameStr="$(\
       printf "%s" "$lineStr" | awk '{print $1;};' \
@@ -334,7 +421,7 @@ do # Loop: read in databases
    fi;
 
    #******************************************************
-   # Sec04 Sub02:
+   # Sec06 Sub02:
    #   - map reads and get mean depth
    #******************************************************
 
@@ -348,8 +435,8 @@ do # Loop: read in databases
    fi;
 
    meanDepthF="$(
-      "$ampDepthStr" \
-           -gene-tbl "hsp65-coord.tsv" \
+      "$hsp65TBStr/ampDepth" \
+           -gene-tbl "$hsp65CoordsStr" \
            -p-gene-cover \
            -min-depth 1 \
            -sam "del.sam" |
@@ -360,11 +447,11 @@ do # Loop: read in databases
    meanDepthF="${meanDepthF##* }";
 
    #******************************************************
-   # Sec04 Sub03:
+   # Sec06 Sub03:
    #   - get species in hsp65
    #******************************************************
 
-   "$getLinStr" \
+   "$hsp65TBStr/getLin" \
         -simple "$simpDbStr" \
         -complex "$compDbStr" \
         -bin-prefix "$nameStr-bin" \
@@ -422,6 +509,43 @@ do # Loop: read in databases
            } # BEGIN
         ';
    rm "del.sam";
+
+   #******************************************************
+   # Sec06 Sub04:
+   #   - get fragment species
+   #******************************************************
+
+   if [ -f "$nameStr-bin-fragments.fq" ];
+   then
+      $mapCmdStr "$nameStr-bin-fragments.fq" |
+        "$hsp65TBStr/tbCon" -sam - \
+        > "$nameStr-bin-fragments-con.sam";
+
+      "$hsp65TBStr/getLin" \
+           -simple "$simpDbStr" \
+           -complex "$compDbStr" \
+           -pmode-genome \
+           -sam "$nameStr-bin-fragments-con.sam";
+      "$hsp65TBStr/filtsam" \
+          -out-fasta \
+          -sam "$nameStr-bin-fragments-con.sam" \
+          -out "$nameStr-bin-fragments-con.fa";
+      rm "$nameStr-bin-fragments-con.sam";
+   fi;
+
+   #******************************************************
+   # Sec06 Sub05:
+   #   - build consensus for unkown reads
+   #******************************************************
+
+   if [ -f "$nameStr-bin-fragments.fq" ];
+   then
+      $mapCmdStr "$nameStr-bin-hsp65-unkown.fq" |
+        "$hsp65TBStr/tbCon" -sam - |
+        "$hsp65TBStr/filtsam" -out-fasta \
+        > "$nameStr-bin-hsp65-unkow-con.fa";
+   fi;
+  
 done < "$fileStr"; # Loop: read in databases
 # for report have: name-barcode\thsp65\tdepth
 
