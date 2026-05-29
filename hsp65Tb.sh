@@ -263,9 +263,9 @@ then # If: user wanted to install
             s/arm[Vv]*8.*/-arm-64/; # arm8 is 64 bit
             s/arm[Vv]*[0-7].*/arm32/; # 32bit arm
             s/^arm.*/arm32/;  # assume 32bit arm
-            s/x86*/x86/;      # often 64 bit intel/amd
-            s/i386*/x86/;     # older intel/amd
-            s/i686*/x86/;     # enhanced intel/AMD
+            s/x86.*/x86/;      # often 64 bit intel/amd
+            s/i386.*/x86/;     # older intel/amd
+            s/i686.*/x86/;     # enhanced intel/AMD
             s/-arm-64/arm64/; # here to avoid overwrite
           '
    )";
