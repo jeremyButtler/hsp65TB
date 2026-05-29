@@ -388,7 +388,7 @@ fi;
 #*********************************************************
 
 { # print the header
-   printf "sample\tmean_depth\tperc_cover\tsource";
+   printf "sample\tsource\tmean_depth\tperc_cover";
    printf "\tgene\tname";
    printf "\tsupport\tclassifiable";
    printf "\tpercent_support\ttotal_reads\n";
