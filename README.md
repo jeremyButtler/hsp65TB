@@ -47,3 +47,21 @@ sh hsp65Tb.sh out.tsv > out-report.tsv;
 ```
 
 For the help message do `hsp65Tb.sh -h`.
+
+# Other scripts:
+
+The tbMergeK2Reports.awk script we used to process kraken2
+  reports for Mycobacterium read counts. It is not very
+  great, but it works. The report file names should be in
+  the `<year>-<country>` (ex `2025-USA`) format. You need
+  to use the `--report report.tsv` option in kraken2.
+
+```
+awk -f tbMergeK2Reports.awk report.tsv;
+```
+
+or for mutiple files
+
+```
+awk -f tbMergeK2Reports.awk report_1.tsv report_2.tsv;
+```
